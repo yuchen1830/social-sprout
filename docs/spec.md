@@ -7,38 +7,35 @@
 - **Provider Abstraction**: Design a robust interface for generation providers so specific implementations (Freepik/Claude) can be swapped or stubbed without affecting the core app.
 - **MVP Reliability**: Ensure the "happy path" (Generate -> Approve -> Schedule) works flawlessly with stubbed data.
 - **Platform Expansion**: Structure data to support future platforms (Pinterest) even if only IG/FB are supported now.
-- **Monetization**: Integrate x402 for payment/credit management.
+- **Monetization (Automated)**: Integrate x402 for automated payment/credit management.
+- **Budget Control**: Allow users to set specific spending limits per generation run.
+- **Simulated Posting**: Simulate the posting action via a worker state change (stubbed integration).
 
 ### Non-Goals
-- **Real-time Posting**: Actual integration with FB/IG APIs is out of scope. We will simulate "posting" via a worker.
-- **Payment/Billing**: Out of scope for MVP.
-- **Complex Editing**: No image editor or advanced text editing. Just simple approval/regeneration (or manual text tweak if strictly necessary, but simple "approve" is priority).
-- **User Ops/Auth**: Simple auth is fine, potentially just stubbed/dev-mode auth for now if not specified otherwise. (Assuming Next.js basics).
+- **Real-time Posting**: Actual integration with FB/IG APIs is out of scope for MVP v1.
+- **Complex Editing**: No image editor or advanced text editing. Just simple approval/regeneration.
+- **User Ops/Auth**: Simple auth is fine.
 
 ## 2. User Flows
 
-### Flow 1: Onboarding & Brand Setup
-1. **Landing**: User lands on app.
-2. **Create Brand**: User inputs "Brand Name", "Industry" (Category), "Vibe" (StylePreset), and optional "Description".
-3. **Save**: Brand is committed to database.
+### Flow 1: Unified Create & Generate
+1. **Input Interface**: User lands on the "New Campaign" screen.
+    - **Brand**: Name, Category, Description.
+    - **Campaign**: Goal, Platforms.
+    - **Generation**: Select Style, Set Budget.
+    - **Assets**: Upload product images (orphaned initially, linked on create).
+2. **Action**: User clicks "Generate Drafts".
+    - **Payment**: System checks budget against x402.
+3. **Processing**:
+    - System creates `Campaign`.
+    - Assets are linked to the new Campaign.
+    - System triggers `GenerationRun`.
+4. **Review**: User moves to the Review screen with 3 generated drafts.
 
-### Flow 2: Campaign Creation
-1. **Dashboard**: User sees list of brands. Selects a brand.
-2. **New Campaign**: Clicks "New Campaign".
-3. **Input**: Enters "Campaign Name" (e.g., "Summer Sale"), "Goal" (e.g., "Drive traffic"), and select "Platforms" (IG/FB).
-4. **Create**: Campaign object created.
-
-### Flow 3: Generation & Review
-1. **Trigger**: User enters Campaign workspace.
-2. **Effect Setup**:
-    - **Select Style**: User chooses from presets (UGC, Clean Studio, etc.). Defaults to Brand's style.
-    - **Context (Optional)**: User types instructions or uploads `Assets` (product images).
-3. **Generate**: User clicks "Generate Drafts".
-    - **Payment**: System automatically checks credits/payment method via x402. Deducts usage.
-4. **Processing**: System creates `GenerationRun` and calls Provider.
-5. **Review**: User sees 3 drafts.
-4. **Action**: User can "Approve" a draft or "Reject".
-5. **Refinement (Optional)**: User might edit caption text before approving.
+### Flow 2: Review & Schedule
+1. **Review**: User sees 3 drafts.
+2. **Action**: User can "Approve" a draft or "Reject".
+3. **Refinement (Optional)**: User might edit caption text before approving.
 
 ### Flow 4: Scheduling & Posting (Simulation)
 1. **Schedule**: For an approved post, User selects a date/time.
@@ -48,24 +45,18 @@
 
 ## 3. Data Entities
 
-### Brand
-- `id`: UUID
-- `name`: string
-- `category`: Enum (LifestyleProduct, ConsumerProduct, Place, Service)
-- `style`: Enum (UGC, CleanStudio, WarmLifestyle, Editorial, Minimal, Documentary)
-- `description`: text
-
 ### Campaign
 - `id`: UUID
-- `brandId`: UUID
-- `name`: string
-- `description`: text
+- `brandName`: string
+- `brandCategory`: Enum (LifestyleProduct, ConsumerProduct, Place, Service)
+- `brandDescription`: text
+- `goal`: text
 - `platforms`: Array<Enum(Instagram, Facebook, Pinterest)>
 - `status`: Enum (DRAFT, PAID, COMPLETED)
 
 ### Asset
 - `id`: UUID
-- `brandId`: UUID
+- `campaignId`: UUID (nullable during upload, linking happens at campaign creation)
 - `url`: string
 - `type`: Enum (IMAGE)
 - `createdAt`: DateTime
@@ -110,11 +101,9 @@ stateDiagram-v2
 
 ## 6. MVP Acceptance Criteria (Checklist)
 
-- [ ] Can create a Brand with valid metadata.
-- [ ] Can upload an Asset and associate it with a Brand/Campaign.
-- [ ] Can initiate x402 payment simulation.
-- [ ] Can create a Campaign under a Brand (gated by payment/credits).
-- [ ] "Generate" button creates 3 Post drafts using uploaded Assets (mocked usage).
+- [ ] Can create a Campaign with Brand details embedded.
+- [ ] Can upload an Asset and associate it with a Campaign.
+- [ ] "Generate" button creates 3 Post drafts using uploaded Assets.
 - [ ] Can transition a Post from DRAFT -> APPROVED.
 - [ ] Can set specific scheduled time for a Post.
 - [ ] Mock worker/endpoint can flip SCHEDULED -> POSTED.
