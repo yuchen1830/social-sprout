@@ -18,29 +18,24 @@
 
 ## 2. User Flows
 
-### Flow 1: Onboarding & Brand Setup
-1. **Landing**: User lands on app.
-2. **Create Brand**: User inputs "Brand Name", "Industry" (Category), "Vibe" (StylePreset), and optional "Description".
-3. **Save**: Brand is committed to database.
+### Flow 1: Unified Create & Generate
+1. **Input Interface**: User lands on the "New Campaign" screen.
+    - **Brand**: Name, Category, Description.
+    - **Campaign**: Goal, Platforms.
+    - **Generation**: Select Style, Set Budget.
+    - **Assets**: Upload product images (orphaned initially, linked on create).
+2. **Action**: User clicks "Generate Drafts".
+    - **Payment**: System checks budget against x402.
+3. **Processing**:
+    - System creates `Campaign`.
+    - Assets are linked to the new Campaign.
+    - System triggers `GenerationRun`.
+4. **Review**: User moves to the Review screen with 3 generated drafts.
 
-### Flow 2: Campaign Creation
-1. **Dashboard**: User sees list of brands. Selects a brand.
-2. **New Campaign**: Clicks "New Campaign".
-3. **Input**: Enters "Campaign Name" (e.g., "Summer Sale"), "Goal" (e.g., "Drive traffic"), and select "Platforms" (IG/FB).
-4. **Create**: Campaign object created.
-
-### Flow 3: Generation & Review
-1. **Trigger**: User enters Campaign workspace.
-2. **Effect Setup**:
-    - **Select Style**: User chooses from presets (UGC, Clean Studio, etc.). Defaults to Brand's style.
-    - **Set Budget**: User inputs maximum spend for this run (e.g., $5.00).
-    - **Context (Optional)**: User types instructions or uploads `Assets` (product images).
-3. **Generate**: User clicks "Generate Drafts".
-    - **Payment**: System automatically checks credits/payment method via x402. Deducts usage up to the specified budget.
-4. **Processing**: System creates `GenerationRun` and calls Provider.
-5. **Review**: User sees 3 drafts.
-4. **Action**: User can "Approve" a draft or "Reject".
-5. **Refinement (Optional)**: User might edit caption text before approving.
+### Flow 2: Review & Schedule
+1. **Review**: User sees 3 drafts.
+2. **Action**: User can "Approve" a draft or "Reject".
+3. **Refinement (Optional)**: User might edit caption text before approving.
 
 ### Flow 4: Scheduling & Posting (Simulation)
 1. **Schedule**: For an approved post, User selects a date/time.
@@ -50,24 +45,18 @@
 
 ## 3. Data Entities
 
-### Brand
-- `id`: UUID
-- `name`: string
-- `category`: Enum (LifestyleProduct, ConsumerProduct, Place, Service)
-- `style`: Enum (UGC, CleanStudio, WarmLifestyle, Editorial, Minimal, Documentary)
-- `description`: text
-
 ### Campaign
 - `id`: UUID
-- `brandId`: UUID
-- `name`: string
-- `description`: text
+- `brandName`: string
+- `brandCategory`: Enum (LifestyleProduct, ConsumerProduct, Place, Service)
+- `brandDescription`: text
+- `goal`: text
 - `platforms`: Array<Enum(Instagram, Facebook, Pinterest)>
 - `status`: Enum (DRAFT, PAID, COMPLETED)
 
 ### Asset
 - `id`: UUID
-- `brandId`: UUID
+- `campaignId`: UUID (nullable during upload, linking happens at campaign creation)
 - `url`: string
 - `type`: Enum (IMAGE)
 - `createdAt`: DateTime
@@ -112,11 +101,9 @@ stateDiagram-v2
 
 ## 6. MVP Acceptance Criteria (Checklist)
 
-- [ ] Can create a Brand with valid metadata.
-- [ ] Can upload an Asset and associate it with a Brand/Campaign.
-- [ ] Can initiate x402 payment simulation.
-- [ ] Can create a Campaign under a Brand (gated by payment/credits).
-- [ ] "Generate" button creates 3 Post drafts using uploaded Assets (mocked usage).
+- [ ] Can create a Campaign with Brand details embedded.
+- [ ] Can upload an Asset and associate it with a Campaign.
+- [ ] "Generate" button creates 3 Post drafts using uploaded Assets.
 - [ ] Can transition a Post from DRAFT -> APPROVED.
 - [ ] Can set specific scheduled time for a Post.
 - [ ] Mock worker/endpoint can flip SCHEDULED -> POSTED.

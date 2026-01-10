@@ -32,41 +32,23 @@
 
 ## API Endpoints
 
-### 1. Create Brand
-`POST /api/brands`
-
-**Request**
-```json
-{
-  "name": "Acme Coffee",
-  "category": "CAFE_OR_RESTAURANT",
-  "style": "WARM_LIFESTYLE",
-  "description": "Artisanal coffee roaster in downtown."
-}
-```
-
-**Response (201 Created)**
-```json
-{
-  "id": "brand_123",
-  "name": "Acme Coffee",
-  "category": "CAFE_OR_RESTAURANT",
-  "style": "WARM_LIFESTYLE",
-  "description": "Artisanal coffee roaster in downtown.",
-  "createdAt": "2023-10-27T10:00:00Z"
-}
-```
-
-### 2. Create Campaign
+### 1. Unified Create & Generate
 `POST /api/campaigns`
 
 **Request**
 ```json
 {
-  "brandId": "brand_123",
-  "name": "Autumn Launch",
+  "brandName": "Acme Coffee",
+  "category": "CAFE_OR_RESTAURANT",
+  "brandDescription": "Artisanal coffee roaster.",
   "goal": "Drive traffic to new menu",
-  "platforms": ["INSTAGRAM", "FACEBOOK"]
+  "platforms": ["INSTAGRAM", "FACEBOOK"],
+  "generationParams": { 
+    "style": "WARM_LIFESTYLE",
+    "budget": 500,
+    "referenceAssetIds": ["asset_999"],
+    "additionalContext": "Focus on the pumpkin spice latte."
+  }
 }
 ```
 
@@ -74,35 +56,47 @@
 ```json
 {
   "id": "camp_456",
-  "brandId": "brand_123",
-  "name": "Autumn Launch",
+  "brandName": "Acme Coffee",
   "platforms": ["INSTAGRAM", "FACEBOOK"],
-  "createdAt": "2023-10-27T10:05:00Z"
+  "createdAt": "2023-10-27T10:05:00Z",
+  "firstRun": { 
+    "runId": "run_789",
+    "posts": [
+      {
+        "id": "post_101",
+        "status": "DRAFT",
+        "content": { "imageUrl": "...", "caption": "..." },
+        "platform": "INSTAGRAM"
+      }
+      // ...
+    ]
+  }
 }
 ```
 
-### 3. Upload Asset
+### 2. Upload Asset
 `POST /api/assets/upload`
 
 **Request**
 ```json
 {
-  "brandId": "brand_123",
+  "campaignId": "camp_456", 
   "filename": "product-shot.jpg",
   "contentType": "image/jpeg"
 }
 ```
+*Note: `campaignId` is optional. If omitted, the asset is orphaned until linked via `referenceAssetIds` in a Campaign Create/Generate call.*
 
 **Response (200 OK)**
 ```json
 {
   "uploadUrl": "https://s3.amazonaws.com/bucket/key?signature=...",
   "assetId": "asset_999",
-  "key": "brand_123/asset_999.jpg"
+  "key": "camp_456/asset_999.jpg"
 }
 ```
 
-### 4. Background Payment Check
+### 3. Background Payment Check
 `POST /api/payment/checkout`
 *(Internal Use: Triggered automatically during generation if needed, or for top-ups)*
 
@@ -121,7 +115,7 @@
 }
 ```
 
-### 5. Generate Posts
+### 4. Generate Posts
 `POST /api/campaigns/:id/generate`
 *(Automatically handles payment deduction)*
 
@@ -163,7 +157,7 @@
 }
 ```
 
-### 6. Approve Post
+### 5. Approve Post
 `POST /api/posts/:id/approve`
 
 **Request**
@@ -186,7 +180,7 @@
 }
 ```
 
-### 7. Schedule Post
+### 6. Schedule Post
 `POST /api/posts/:id/schedule`
 
 **Request**
@@ -205,7 +199,7 @@
 }
 ```
 
-### 8. Get Calendar
+### 7. Get Calendar
 `GET /api/calendar?from=2023-11-01&to=2023-11-30`
 
 **Response (200 OK)**

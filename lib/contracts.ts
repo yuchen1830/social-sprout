@@ -40,20 +40,11 @@ export type AssetType = z.infer<typeof AssetTypeEnum>;
 
 // --- Entities ---
 
-export const BrandSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().min(1),
-  category: CategoryEnum,
-  style: StylePresetEnum,
-  description: z.string().optional(),
-  createdAt: z.string().datetime(),
-});
-export type Brand = z.infer<typeof BrandSchema>;
-
 export const CampaignSchema = z.object({
   id: z.string().uuid(),
-  brandId: z.string().uuid(),
-  name: z.string().min(1),
+  brandName: z.string().min(1),
+  brandCategory: CategoryEnum,
+  brandDescription: z.string().optional(),
   goal: z.string().min(1),
   platforms: z.array(PlatformEnum),
   status: CampaignStatusEnum.default("DRAFT"),
@@ -63,7 +54,7 @@ export type Campaign = z.infer<typeof CampaignSchema>;
 
 export const AssetSchema = z.object({
   id: z.string().uuid(),
-  brandId: z.string().uuid(),
+  campaignId: z.string().uuid().optional(), // Nullable if uploaded before campaign creation
   url: z.string().url(),
   type: AssetTypeEnum,
   createdAt: z.string().datetime(),
@@ -89,27 +80,25 @@ export type Post = z.infer<typeof PostSchema>;
 
 // --- API Contracts ---
 
-// POST /api/brands
-export const CreateBrandInputSchema = z.object({
-  name: z.string().min(1),
-  category: CategoryEnum,
-  style: StylePresetEnum,
-  description: z.string().optional(),
-});
-export type CreateBrandInput = z.infer<typeof CreateBrandInputSchema>;
-
 // POST /api/campaigns
 export const CreateCampaignInputSchema = z.object({
-  brandId: z.string().uuid(),
-  name: z.string().min(1),
+  brandName: z.string().min(1),
+  brandCategory: CategoryEnum,
+  brandDescription: z.string().optional(),
   goal: z.string(),
   platforms: z.array(PlatformEnum).min(1),
+  generationParams: z.object({
+    style: StylePresetEnum.optional(),
+    budget: z.number().min(50),
+    referenceAssetIds: z.array(z.string().uuid()).optional(),
+    additionalContext: z.string().optional(),
+  }).optional(),
 });
 export type CreateCampaignInput = z.infer<typeof CreateCampaignInputSchema>;
 
 // POST /api/assets/upload
 export const UploadAssetInputSchema = z.object({
-  brandId: z.string().uuid(),
+  campaignId: z.string().uuid().optional(),
   filename: z.string().min(1),
   contentType: z.string().regex(/^image\//),
 });
