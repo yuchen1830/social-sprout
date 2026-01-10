@@ -45,11 +45,11 @@ export async function POST(request: Request) {
 
             // Link orphaned assets if IDs provided
             if (referenceAssetIds && referenceAssetIds.length > 0) {
-                // Implementation note: This assumes AssetModel exists and works
-                // await AssetModel.updateMany(
-                //   { _id: { $in: referenceAssetIds } },
-                //   { $set: { campaignId: campaign._id } }
-                // );
+                // Link assets to this campaign
+                await AssetModel.updateMany(
+                    { _id: { $in: referenceAssetIds } },
+                    { $set: { campaignId: campaign._id } }
+                );
             }
 
             // Simulate Budget Check
