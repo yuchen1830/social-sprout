@@ -129,6 +129,7 @@
 ```json
 {
   "style": "WARM_LIFESTYLE",
+  "budget": 500,
   "referenceAssetIds": ["asset_999"], 
   "additionalContext": "Focus on the pumpkin spice latte."
 }

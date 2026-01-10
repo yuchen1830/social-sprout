@@ -137,6 +137,7 @@ export type InitiatePaymentResponse = z.infer<typeof InitiatePaymentResponseSche
 // POST /api/campaigns/:id/generate
 export const GeneratePostsInputSchema = z.object({
   style: StylePresetEnum.optional(), // Overrides brand/campaign defaults
+  budget: z.number().min(50), // Minimum budget in cents (e.g., $0.50)
   referenceAssetIds: z.array(z.string().uuid()).optional(),
   additionalContext: z.string().optional(),
 });
