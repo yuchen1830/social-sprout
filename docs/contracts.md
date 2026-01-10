@@ -125,37 +125,38 @@
   "style": "WARM_LIFESTYLE",
   "budget": 500,
   "referenceAssetIds": ["asset_999"], 
-  "additionalContext": "Focus on the pumpkin spice latte."
+  "additionalContext": "Focus on the pumpkin spice latte.",
+  "providerConfig": {
+    "freepik": { "styleId": "digital-art", "imageType": "vector" }
+  },
+  "payment": {
+    "proof": { "transactionHash": "0x123...", "quantity": 500 }
+  }
 }
 ```
 
-**Response (200 OK)**
+**Response (200 OK - Generated)**
 ```json
 {
   "runId": "run_789",
-  "posts": [
-    {
-      "id": "post_101",
-      "status": "DRAFT",
-      "content": {
-        "imageUrl": "https://stub-provider.com/img1.jpg",
-        "caption": "Cozy autumn vibes with our PSL! 🍂☕ #AcmeCoffee"
-      },
-      "platform": "INSTAGRAM"
-    },
-    {
-      "id": "post_102",
-      "status": "DRAFT",
-      "content": {
-        "imageUrl": "https://stub-provider.com/img2.jpg",
-        "caption": "Get your pumpkin fix today! Open till 8pm."
-      },
-      "platform": "FACEBOOK"
-    }
-    // ... total 3 drafts typically, can be mixed platforms or multi-platform
-  ]
+  "posts": [ ... ]
 }
 ```
+
+**Response (402 Payment Required)**
+```json
+{
+  "error": "PAYMENT_REQUIRED",
+  "details": {
+    "amount": 0.5,
+    "currency": "USDC",
+    "receiverAddress": "0xMerchant...",
+    "chainId": 8453
+  },
+  "quoteId": "quote_abc123"
+}
+```
+
 
 ### 5. Approve Post
 `POST /api/posts/:id/approve`

@@ -123,19 +123,52 @@ export const InitiatePaymentResponseSchema = z.object({
 });
 export type InitiatePaymentResponse = z.infer<typeof InitiatePaymentResponseSchema>;
 
+// --- Payment Schemas ---
+
+export const PaymentDetailsSchema = z.object({
+  amount: z.number().min(0.01), // Amount in major currency unit (e.g., 0.05 USDC)
+  currency: z.enum(["USDC", "ETH", "EURC"]),
+  receiverAddress: z.string(),
+  chainId: z.number().int(),
+});
+export type PaymentDetails = z.infer<typeof PaymentDetailsSchema>;
+
+export const PaymentProofSchema = z.object({
+  transactionHash: z.string(),
+  quantity: z.number(), // The amount paid
+});
+export type PaymentProof = z.infer<typeof PaymentProofSchema>;
+
 // POST /api/campaigns/:id/generate
 export const GeneratePostsInputSchema = z.object({
   style: StylePresetEnum.optional(), // Overrides brand/campaign defaults
   budget: z.number().min(50), // Minimum budget in cents (e.g., $0.50)
   referenceAssetIds: z.array(z.string().uuid()).optional(),
   additionalContext: z.string().optional(),
+  // Provider specific settings
+  providerConfig: z.object({
+    freepik: z.object({
+      styleId: z.string().optional(),
+      imageType: z.enum(["vector", "photo", "psd"]).optional(),
+    }).optional(),
+  }).optional(),
+  // Payment: specific wallet to charge or pre-signed proof
+  payment: z.object({
+    proof: PaymentProofSchema.optional(),
+  }).optional(),
 });
 export type GeneratePostsInput = z.infer<typeof GeneratePostsInputSchema>;
 
 export const GeneratePostsResponseSchema = z.object({
   runId: z.string().uuid(),
   posts: z.array(PostSchema),
-});
+}).or(
+  z.object({
+    error: z.literal("PAYMENT_REQUIRED"),
+    details: PaymentDetailsSchema,
+    quoteId: z.string(), // ID to reference this specific price quote
+  })
+);
 export type GeneratePostsResponse = z.infer<typeof GeneratePostsResponseSchema>;
 
 // POST /api/posts/:id/approve
