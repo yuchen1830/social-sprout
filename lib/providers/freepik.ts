@@ -31,6 +31,9 @@ export class FreepikImageProvider implements ImageProvider {
 
         const endpoint = `${this.baseUrl}/text-to-image/mystic`;
 
+        console.log(`[Freepik] Calling endpoint: ${endpoint}`);
+        console.log(`[Freepik] Headers:`, { 'Content-Type': 'application/json', 'x-freepik-api-key': '***', 'Accept': 'application/json' });
+
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
@@ -47,12 +50,16 @@ export class FreepikImageProvider implements ImageProvider {
                 })
             });
 
+            console.log(`[Freepik] Response Status: ${response.status}`);
+            const errorText = await response.text();
+            console.log(`[Freepik] Raw Response: ${errorText.substring(0, 500)}...`);
+
             if (!response.ok) {
-                const errorText = await response.text();
                 throw new Error(`Freepik API Error ${response.status}: ${errorText}`);
             }
 
-            const data = await response.json();
+            // Reparse since we consumed the stream
+            const data = JSON.parse(errorText);
 
             // Expected response format: { data: [ { url: "...", base64: "..." } ] }
             // or { images: [ { url: "..." } ] } - Checking standard Freepik structure
