@@ -1,10 +1,8 @@
-// Basic In-Memory DB (Stub)
+// Native MongoDB Driver Repository
 import { Campaign, Post } from "../../lib/contracts";
+import { getDb } from "../../lib/db";
 
 export class Database {
-    private campaigns: Map<string, Campaign> = new Map();
-    private posts: Map<string, Post> = new Map();
-
     // Singleton
     private static instance: Database;
     private constructor() { }
@@ -15,23 +13,40 @@ export class Database {
         return Database.instance;
     }
 
+    private get collection() {
+        return {
+            campaigns: getDb().collection<Campaign>('campaigns'),
+            posts: getDb().collection<Post>('posts')
+        };
+    }
+
     // Campaign Ops
     async saveCampaign(campaign: Campaign): Promise<void> {
-        this.campaigns.set(campaign.id, campaign);
+        await this.collection.campaigns.updateOne(
+            { id: campaign.id },
+            { $set: campaign },
+            { upsert: true }
+        );
         console.log(`[DB] Saved campaign ${campaign.id}`);
     }
 
     async getCampaign(id: string): Promise<Campaign | undefined> {
-        return this.campaigns.get(id);
+        const campaign = await this.collection.campaigns.findOne({ id });
+        return campaign || undefined;
     }
 
     // Post Ops
     async savePost(post: Post): Promise<void> {
-        this.posts.set(post.id, post);
+        await this.collection.posts.updateOne(
+            { id: post.id },
+            { $set: post },
+            { upsert: true }
+        );
         console.log(`[DB] Saved post ${post.id}`);
     }
 
     async getPostsByCampaign(campaignId: string): Promise<Post[]> {
-        return Array.from(this.posts.values()).filter(p => p.campaignId === campaignId);
+        return await this.collection.posts.find({ campaignId }).toArray();
     }
 }
+

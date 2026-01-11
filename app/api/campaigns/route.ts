@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server';
-// These imports depend on Feature 1 (Infrastructure & DB) being implemented
-import dbConnect from '@/lib/db';
-import { CampaignModel, PostModel, AssetModel } from '@/lib/models';
-import { CreateCampaignInputSchema } from '@/lib/contracts';
-import { StubTextProvider } from '@/lib/providers/stub';
-import { FreepikImageProvider } from '@/lib/providers/freepik';
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db";
+import { CreateCampaignInputSchema } from "@/lib/contracts";
+import { StubImageProvider, StubTextProvider } from "@/lib/providers/stub";
+import { v4 as uuidv4 } from "uuid";
 
-// Initialize providers
-const imageProvider = new FreepikImageProvider();
+// Stubs avoid network calls during local dev
+const imageProvider = new StubImageProvider();
 const textProvider = new StubTextProvider();
 
 export async function POST(request: Request) {
@@ -24,19 +22,21 @@ export async function POST(request: Request) {
         }
 
         const input = validationResult.data;
+        const { db } = await connectToDatabase();
 
-        // Connect to DB (Depends on Feature 1)
-        await dbConnect();
-
-        // 2. Create Campaign (Depends on Feature 1 Models)
-        const campaign = await CampaignModel.create({
+        // 2. Create Campaign
+        const campaign = {
+            _id: uuidv4(),
             brandName: input.brandName,
             brandCategory: input.brandCategory,
             brandDescription: input.brandDescription,
             goal: input.goal,
             platforms: input.platforms,
-            status: 'DRAFT', // Default
-        });
+            status: "DRAFT",
+            createdAt: new Date().toISOString(),
+        };
+
+        await db.collection("campaigns").insertOne(campaign);
 
         let firstRun = undefined;
 
@@ -46,8 +46,7 @@ export async function POST(request: Request) {
 
             // Link orphaned assets if IDs provided
             if (referenceAssetIds && referenceAssetIds.length > 0) {
-                // Link assets to this campaign
-                await AssetModel.updateMany(
+                await db.collection("assets").updateMany(
                     { _id: { $in: referenceAssetIds } },
                     { $set: { campaignId: campaign._id } }
                 );
@@ -64,9 +63,9 @@ export async function POST(request: Request) {
             for (let i = 0; i < 3; i++) {
                 // Generate Image (Stub)
                 const imageResult = await imageProvider.generateImage({
-                    prompt: `${input.brandName} ${input.goal} ${additionalContext || ''}`,
+                    prompt: `${input.brandName} ${input.goal} ${additionalContext || ""}`,
                     style: style,
-                    referenceAssetUrls: [], // In full impl, would fetch URLs from AssetModel
+                    referenceAssetUrls: [],
                 });
 
                 // Generate Caption (Stub)
@@ -76,34 +75,40 @@ export async function POST(request: Request) {
                 });
 
                 // Create Post Record
-                const post = await PostModel.create({
+                const post = {
+                    _id: uuidv4(),
                     campaignId: campaign._id,
-                    status: 'DRAFT',
+                    status: "DRAFT",
+                    scheduledTime: null,
                     content: {
                         imageUrl: imageResult.imageUrl,
                         caption: textResult.text,
                     },
-                    platform: input.platforms[0] || 'INSTAGRAM',
-                });
+                    platform: input.platforms[0] || "INSTAGRAM",
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+
+                await db.collection("posts").insertOne(post);
 
                 drafts.push(post);
             }
 
             firstRun = {
-                runId: new Date().getTime().toString(), // Mock Run ID
+                runId: uuidv4(),
                 posts: drafts,
             };
         }
 
         // 4. Return Response
         return NextResponse.json({
-            id: campaign._id,
-            brandName: campaign.brandName,
-            name: campaign.goal, // Using goal as name per spec
-            platforms: campaign.platforms,
-            createdAt: campaign.createdAt,
-            firstRun,
-        }, { status: 201 });
+                id: campaign._id,
+                brandName: campaign.brandName,
+                name: campaign.goal,
+                platforms: campaign.platforms,
+                createdAt: campaign.createdAt,
+                firstRun,
+            }, { status: 201 });
 
     } catch (error) {
         console.error("Campaign Creation Error:", error);

@@ -1,13 +1,11 @@
-import mongoose from "mongoose";
-
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/social-sprout";
+import { connectToDatabase } from '../../lib/db';
 
 export const connectDB = async () => {
     try {
-        await mongoose.connect(MONGODB_URI);
-        console.log("✅ MongoDB Connected");
-    } catch (error) {
-        console.error("❌ MongoDB Connection Error:", error);
+        await connectToDatabase();
+    } catch (error: any) {
+        console.error("❌ MongoDB Connection Error:", error.message || error);
         process.exit(1);
     }
 };
+

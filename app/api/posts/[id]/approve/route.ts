@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import { PostModel } from '@/lib/models';
-import { ApprovePostInputSchema } from '@/lib/contracts';
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db";
+import { ApprovePostInputSchema } from "@/lib/contracts";
 
 export async function POST(
     request: Request,
@@ -20,24 +19,29 @@ export async function POST(
         }
         const input = validationResult.data;
 
-        await dbConnect();
+        const { db } = await connectToDatabase();
 
-        const post = await PostModel.findById(id);
-        if (!post) {
-            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        const update = {
+            $set: {
+                status: "APPROVED",
+                ...(input.editedCaption ? { "content.caption": input.editedCaption } : {}),
+                updatedAt: new Date().toISOString(),
+            },
+        };
+
+        const result = await db.collection("posts").findOneAndUpdate(
+            { _id: id },
+            update,
+            { returnDocument: "after" }
+        );
+
+        if (!result.value) {
+            return NextResponse.json({ error: "Post not found" }, { status: 404 });
         }
 
-        // Update status and optionally caption
-        post.status = 'APPROVED';
-        if (input.editedCaption) {
-            post.content.caption = input.editedCaption;
-        }
-
-        await post.save();
-
-        return NextResponse.json(post);
+        return NextResponse.json(result.value);
     } catch (error) {
         console.error("Approve Post Error:", error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }

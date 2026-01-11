@@ -1,7 +1,6 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db';
-import { PostModel } from '@/lib/models';
-import { SchedulePostInputSchema } from '@/lib/contracts';
+import { NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db";
+import { SchedulePostInputSchema } from "@/lib/contracts";
 
 export async function POST(
     request: Request,
@@ -20,26 +19,33 @@ export async function POST(
         }
         const input = validationResult.data;
 
-        await dbConnect();
+        const { db } = await connectToDatabase();
 
-        const post = await PostModel.findById(id);
+        const post = await db.collection("posts").findOne({ _id: id });
         if (!post) {
-            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+            return NextResponse.json({ error: "Post not found" }, { status: 404 });
         }
 
-        if (post.status !== 'APPROVED' && post.status !== 'SCHEDULED') {
-            return NextResponse.json({ error: 'Post must be approved before scheduling' }, { status: 400 });
+        if (post.status !== "APPROVED" && post.status !== "SCHEDULED") {
+            return NextResponse.json({ error: "Post must be approved before scheduling" }, { status: 400 });
         }
 
         // Update status and time
-        post.status = 'SCHEDULED';
-        post.scheduledTime = input.scheduledTime;
+        const result = await db.collection("posts").findOneAndUpdate(
+            { _id: id },
+            {
+                $set: {
+                    status: "SCHEDULED",
+                    scheduledTime: input.scheduledTime,
+                    updatedAt: new Date().toISOString(),
+                },
+            },
+            { returnDocument: "after" }
+        );
 
-        await post.save();
-
-        return NextResponse.json(post);
+        return NextResponse.json(result.value);
     } catch (error) {
         console.error("Schedule Post Error:", error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
     }
 }
