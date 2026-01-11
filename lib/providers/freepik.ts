@@ -60,24 +60,38 @@ export class FreepikImageProvider implements ImageProvider {
             }
 
             // Reparse since we consumed the stream
-            const data = JSON.parse(errorText);
+            let data = JSON.parse(errorText);
+
+            // Handle Async Response (IN_PROGRESS)
+            if (data.data && data.data.status === 'IN_PROGRESS' && data.data.task_id) {
+                console.log(`[Freepik] Async Task Started: ${data.data.task_id}. Polling...`);
+                data = await this.waitForCompletion(data.data.task_id);
+            }
 
             // Expected response format: { data: [ { url: "...", base64: "..." } ] }
-            // or { images: [ { url: "..." } ] } - Checking standard Freepik structure
-            // Usually: { data: [ { base64: "..." } ] } for some endpoints, or URLs.
-            // Mystic usually returns base64 by default or requires a parameter.
-            // Let's assume standard JSON response. If it returns base64, we handle it.
+            // or { images: [ { url: "..." } ] } 
 
-            // Adjust based on actual API response structure (usually data[0].base64 or url)
-            const imageBase64 = data.data?.[0]?.base64;
-            const imageUrl = data.data?.[0]?.url;
+            // Adjusted based on actual API response structure
+            // Mystic 'generated' is array of strings (URLs)
+            const generatedItem = data.data?.generated?.[0]; // Could be string "url"
+            const dataItem = data.data?.[0]; // Generic fallback object
 
-            let finalUrl = imageUrl;
+            let finalUrl = undefined;
+            let imageBase64 = undefined;
+
+            if (typeof generatedItem === 'string') {
+                finalUrl = generatedItem;
+            } else {
+                finalUrl = generatedItem?.url || dataItem?.url;
+                imageBase64 = generatedItem?.base64 || dataItem?.base64;
+            }
+
             if (!finalUrl && imageBase64) {
                 finalUrl = `data:image/png;base64,${imageBase64}`;
             }
 
             if (!finalUrl) {
+                console.error("[Freepik] Unexpected Response Structure:", JSON.stringify(data, null, 2));
                 throw new Error("No image URL or Base64 found in Freepik response");
             }
 
@@ -89,5 +103,43 @@ export class FreepikImageProvider implements ImageProvider {
             console.error("Freepik Generation Failed:", error);
             throw error;
         }
+    }
+
+    private async waitForCompletion(taskId: string): Promise<any> {
+        const pollEndpoint = `${this.baseUrl}/mystic/${taskId}`;
+        const maxRetries = 20; // 40 seconds max (2s interval)
+
+        for (let i = 0; i < maxRetries; i++) {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s
+
+            console.log(`[Freepik] Polling attempt ${i + 1}/${maxRetries}...`);
+            const response = await fetch(pollEndpoint, {
+                headers: {
+                    'x-freepik-api-key': this.apiKey,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                const txt = await response.text();
+                console.warn(`[Freepik] Poll failed: ${response.status} ${txt}`);
+                continue;
+            }
+
+            const data = await response.json();
+            const status = data.data?.status;
+            console.log(`[Freepik] Poll Status: ${status}`);
+
+            if (status === 'COMPLETED') {
+                console.log("[Freepik] Generation Completed!");
+                return data;
+            } else if (status === 'FAILED') {
+                throw new Error(`Freepik Task Failed: ${JSON.stringify(data)}`);
+            }
+
+            // If IN_PROGRESS, loop continues
+        }
+
+        throw new Error("Freepik Task Timed Out");
     }
 }
