@@ -57,10 +57,12 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: "Budget too low" }, { status: 402 });
             }
 
+            console.log("Starting Generation Loop. Style:", style);
             const drafts = [];
 
             // Generate 3 drafts
             for (let i = 0; i < 3; i++) {
+                console.log(`Generating draft ${i + 1}/3...`);
                 // Generate Image (Stub)
                 const imageResult = await imageProvider.generateImage({
                     prompt: `${input.brandName} ${input.goal} ${additionalContext || ""}`,

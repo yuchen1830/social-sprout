@@ -7,6 +7,7 @@ export class FreepikImageProvider implements ImageProvider {
 
     constructor() {
         this.apiKey = process.env.FREEPIK_API_KEY || '';
+        console.log("FreepikProvider initialized. API Key present:", !!this.apiKey, "Length:", this.apiKey.length);
         if (!this.apiKey) {
             console.warn("FreepikImageProvider: No FREEPIK_API_KEY found in environment variables.");
         }
