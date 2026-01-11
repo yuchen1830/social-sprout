@@ -205,6 +205,36 @@ export function UnifiedCampaignForm() {
                             <p className="text-sm text-muted-foreground mt-2">Maximum we'll recreate contents for.</p>
                         </div>
 
+                        <div>
+                            <h2 className="text-3xl font-light mb-4">Reference Image <span className="text-lg text-muted-foreground">(Optional)</span></h2>
+                            <Input
+                                type="file"
+                                accept="image/*"
+                                className="cursor-pointer file:cursor-pointer"
+                                onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        const formData = new FormData();
+                                        formData.append("file", file);
+                                        try {
+                                            const res = await fetch("/api/assets/upload", {
+                                                method: "POST",
+                                                body: formData,
+                                            });
+                                            const json = await res.json();
+                                            if (json.id) {
+                                                form.setValue("generationParams.referenceAssetIds", [json.id]);
+                                                alert("Image uploaded successfully!");
+                                            }
+                                        } catch (err) {
+                                            console.error("Upload failed", err);
+                                            alert("Upload failed. Check console.");
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+
                         <div className="pt-4">
                             <Button
                                 size="lg"
