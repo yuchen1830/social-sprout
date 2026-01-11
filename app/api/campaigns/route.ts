@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import { CampaignModel, PostModel, AssetModel } from '@/lib/models';
 import { CreateCampaignInputSchema } from '@/lib/contracts';
-import { StubImageProvider, StubTextProvider } from '@/lib/providers/stub';
+import { StubTextProvider } from '@/lib/providers/stub';
+import { FreepikImageProvider } from '@/lib/providers/freepik';
 
-// Initialize providers (Stateless for stubs)
-const imageProvider = new StubImageProvider();
+// Initialize providers
+const imageProvider = new FreepikImageProvider();
 const textProvider = new StubTextProvider();
 
 export async function POST(request: Request) {
