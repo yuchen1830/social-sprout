@@ -29,7 +29,8 @@ export class FreepikImageProvider implements ImageProvider {
         // but 'mystic' is their flagship. Let's use 'mystic' for best results if available, otherwise 'flux-realism'.
         // Docs say: https://api.freepik.com/v1/ai/text-to-image/mystic
 
-        const endpoint = `${this.baseUrl}/text-to-image/mystic`;
+        // Correct Mystic endpoint: v1/ai/mystic
+        const endpoint = `${this.baseUrl}/mystic`;
 
         console.log(`[Freepik] Calling endpoint: ${endpoint}`);
         console.log(`[Freepik] Headers:`, { 'Content-Type': 'application/json', 'x-freepik-api-key': '***', 'Accept': 'application/json' });
