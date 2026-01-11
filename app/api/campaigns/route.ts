@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { CreateCampaignInputSchema } from "@/lib/contracts";
-import { StubImageProvider, StubTextProvider } from "@/lib/providers/stub";
+import { StubTextProvider } from "@/lib/providers/stub";
+import { FreepikImageProvider } from "@/lib/providers/freepik";
 import { v4 as uuidv4 } from "uuid";
 
-// Stubs avoid network calls during local dev
-const imageProvider = new StubImageProvider();
+// Use real Freepik provider for images, Stub for text
+const imageProvider = new FreepikImageProvider();
 const textProvider = new StubTextProvider();
 
 export async function POST(request: Request) {
@@ -104,13 +105,13 @@ export async function POST(request: Request) {
 
         // 4. Return Response
         return NextResponse.json({
-                id: campaign._id,
-                brandName: campaign.brandName,
-                name: campaign.goal,
-                platforms: campaign.platforms,
-                createdAt: campaign.createdAt,
-                firstRun,
-            }, { status: 201 });
+            id: campaign._id,
+            brandName: campaign.brandName,
+            name: campaign.goal,
+            platforms: campaign.platforms,
+            createdAt: campaign.createdAt,
+            firstRun,
+        }, { status: 201 });
 
     } catch (error) {
         console.error("Campaign Creation Error:", error);
