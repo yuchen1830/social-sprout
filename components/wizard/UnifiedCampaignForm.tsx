@@ -50,6 +50,8 @@ export function UnifiedCampaignForm() {
         mode: "onChange"
     })
 
+    const [generatedPosts, setGeneratedPosts] = React.useState<any[]>([])
+
     // Watch values for progressive disclosure
     const brandName = form.watch("brandName")
     const goal = form.watch("goal")
@@ -75,24 +77,27 @@ export function UnifiedCampaignForm() {
         }
 
         setIsGenerating(true)
-        console.log("Submitting:", data)
 
-        // Simulate API Call
         try {
             const res = await fetch('/api/campaigns', {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
             const json = await res.json();
-            console.log("Response:", json)
 
             if (json.error) {
                 alert(`Error: ${JSON.stringify(json.error)}`)
             } else {
-                alert("Campaign Created! Check Console for JSON.")
+                if (json.firstRun && json.firstRun.posts) {
+                    setGeneratedPosts(json.firstRun.posts);
+                    setStep(5); // Advance to Results View
+                } else {
+                    alert("Campaign Created, but no posts returned.");
+                }
             }
         } catch (e) {
             console.error(e)
+            alert("Something went wrong. Check console.")
         } finally {
             setIsGenerating(false)
         }
@@ -241,23 +246,73 @@ export function UnifiedCampaignForm() {
                                 disabled={isGenerating}
                             >
                                 {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Check className="mr-2" />}
-                                Generate Campaign
+                                {isGenerating ? "Generating Magic..." : "Generate Campaign"}
                             </Button>
                         </div>
                     </motion.div>
                 )
+
+            case 5: // Results View
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="w-full max-w-4xl mx-auto"
+                    >
+                        <div className="text-center mb-10">
+                            <h2 className="text-4xl font-light tracking-tight mb-2">Here's what we cooked up! 🍳</h2>
+                            <p className="text-muted-foreground">Fresh posts for <span className="font-semibold text-primary">{brandName}</span> based on your vibe.</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {generatedPosts.map((post, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: idx * 0.1 }}
+                                    className="bg-card rounded-xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow"
+                                >
+                                    <div className="aspect-square bg-muted relative overflow-hidden group">
+                                        <img
+                                            src={post.content.imageUrl}
+                                            alt="Generated Content"
+                                            className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
+                                        />
+                                    </div>
+                                    <div className="p-4">
+                                        <p className="text-sm text-muted-foreground line-clamp-3 italic">
+                                            "{post.content.caption}"
+                                        </p>
+                                        <div className="mt-4 flex gap-2">
+                                            <Button size="sm" variant="outline" className="w-full text-xs">Edit</Button>
+                                            <Button size="sm" className="w-full text-xs">Schedule</Button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            ))}
+                        </div>
+                        <div className="mt-12 text-center">
+                            <Button variant="ghost" onClick={() => window.location.reload()}>Start Over</Button>
+                        </div>
+                    </motion.div>
+                )
+
             default:
                 return null
         }
     }
 
+    // If in results mode, use full width container, else constrained
+    const containerClass = step === 5 ? "w-full min-h-[600px] px-4" : "max-w-xl mx-auto min-h-[400px] flex flex-col justify-center"
+
     return (
-        <div className="max-w-xl mx-auto min-h-[400px] flex flex-col justify-center">
+        <div className={containerClass}>
             <AnimatePresence mode="wait">
                 {renderStep()}
             </AnimatePresence>
 
-            {/* Navigation for manual advance if needed (except last step) */}
+            {/* Navigation for manual advance (except last step & results) */}
             {step < 4 && (
                 <div className="mt-12 flex justify-end min-h-[40px]">
                     <Button
@@ -271,14 +326,16 @@ export function UnifiedCampaignForm() {
                 </div>
             )}
 
-            {/* Step Indicator (5 Steps: 0,1,2,3,4) */}
-            <div className="fixed bottom-10 left-0 right-0 flex justify-center gap-2">
-                {[0, 1, 2, 3, 4].map(i => (
-                    <div key={i} className={cn("h-1 rounded-full transition-all duration-300",
-                        step >= i ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30")}
-                    />
-                ))}
-            </div>
+            {/* Step Indicator (Hide on results) */}
+            {step < 5 && (
+                <div className="fixed bottom-10 left-0 right-0 flex justify-center gap-2">
+                    {[0, 1, 2, 3, 4].map(i => (
+                        <div key={i} className={cn("h-1 rounded-full transition-all duration-300",
+                            step >= i ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30")}
+                        />
+                    ))}
+                </div>
+            )}
         </div>
     )
 }
