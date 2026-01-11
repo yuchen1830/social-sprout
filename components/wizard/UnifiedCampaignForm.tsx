@@ -60,6 +60,7 @@ export function UnifiedCampaignForm() {
         if (step === 0) return !!brandName && brandName.length > 0;
         if (step === 1) return !!goal && goal.length > 0;
         if (step === 2) return !!category;
+        if (step === 3) return !!form.watch("generationParams.style"); // Require style now
         return true
     }
 
@@ -161,11 +162,8 @@ export function UnifiedCampaignForm() {
                         </div>
                     </motion.div>
                 )
-            case 3: // Config (Style + Budget)
+            case 3: // Config (Style ONLY)
                 const currentStyle = form.watch("generationParams.style")
-                // Default to 500 if undefined (though defaultValues should handle it)
-                const currentBudgetCents = form.watch("generationParams.budget") || 500
-
                 return (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -174,43 +172,43 @@ export function UnifiedCampaignForm() {
                         className="space-y-8"
                     >
                         <div>
-                            <h2 className="text-3xl font-light mb-4">Choose a Vibe</h2>
-                            <div className="grid grid-cols-3 gap-3">
+                            <h2 className="text-4xl font-light mb-8">Choose a Vibe</h2>
+                            <div className="grid grid-cols-3 gap-4">
                                 {StylePresetEnum.options.map((s: string) => (
                                     <div
                                         key={s}
-                                        onClick={() => form.setValue("generationParams.style", s as any)}
+                                        onClick={() => { form.setValue("generationParams.style", s as any); nextStep() }} // Auto advance on selection
                                         className={cn(
-                                            "p-4 rounded-lg border cursor-pointer text-center text-sm transition-all",
+                                            "p-6 rounded-xl border cursor-pointer text-center text-sm transition-all hover:scale-[1.02]",
                                             currentStyle === s ? "border-primary bg-primary text-primary-foreground" : "border-border hover:bg-secondary"
                                         )}
                                     >
-                                        {StyleVisuals[s] || s}
+                                        <span className="text-2xl mr-2 block mb-2">{StyleVisuals[s]?.split(" ")[0]}</span>
+                                        {StyleVisuals[s]?.split(" ").slice(1).join(" ") || s}
                                     </div>
                                 ))}
                             </div>
                         </div>
+                        {/* Added "Skip" or manual Next if they want to keep default style? But for now forcing selection is cleaner UI-wise or we keep the Next button. 
+                We added auto-advance above, but let's keep the Next button logic outside safe. */}
+                    </motion.div>
+                )
 
+            case 4: // Reference Image + Generate (No Budget)
+                return (
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="space-y-8"
+                    >
                         <div>
-                            <h2 className="text-3xl font-light mb-4">Set Budget Limit: ${(currentBudgetCents / 100).toFixed(2)}</h2>
-                            <input
-                                type="range"
-                                min="50"       // 50 cents
-                                max="5000"     // $50.00
-                                step="50"      // 50 cent increments
-                                className="w-full accent-primary h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
-                                value={currentBudgetCents}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => form.setValue("generationParams.budget", parseInt(e.target.value))}
-                            />
-                            <p className="text-sm text-muted-foreground mt-2">Maximum we'll recreate contents for.</p>
-                        </div>
-
-                        <div>
-                            <h2 className="text-3xl font-light mb-4">Reference Image <span className="text-lg text-muted-foreground">(Optional)</span></h2>
+                            <h2 className="text-3xl font-light mb-4">Got any inspiration? <span className="text-lg text-muted-foreground">(Optional)</span></h2>
+                            <p className="text-muted-foreground mb-4">Upload a reference image and we'll match its style.</p>
                             <Input
                                 type="file"
                                 accept="image/*"
-                                className="cursor-pointer file:cursor-pointer"
+                                className="cursor-pointer file:cursor-pointer p-4 h-auto border-dashed border-2"
                                 onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
@@ -235,10 +233,10 @@ export function UnifiedCampaignForm() {
                             />
                         </div>
 
-                        <div className="pt-4">
+                        <div className="pt-8">
                             <Button
                                 size="lg"
-                                className="w-full text-lg h-14"
+                                className="w-full text-lg h-16 shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all rounded-xl"
                                 onClick={form.handleSubmit(onSubmit)}
                                 disabled={isGenerating}
                             >
@@ -260,8 +258,8 @@ export function UnifiedCampaignForm() {
             </AnimatePresence>
 
             {/* Navigation for manual advance if needed (except last step) */}
-            {step < 3 && (
-                <div className="mt-8 flex justify-end">
+            {step < 4 && (
+                <div className="mt-12 flex justify-end min-h-[40px]">
                     <Button
                         variant="ghost"
                         onClick={nextStep}
@@ -273,9 +271,9 @@ export function UnifiedCampaignForm() {
                 </div>
             )}
 
-            {/* Step Indicator */}
+            {/* Step Indicator (5 Steps: 0,1,2,3,4) */}
             <div className="fixed bottom-10 left-0 right-0 flex justify-center gap-2">
-                {[0, 1, 2, 3].map(i => (
+                {[0, 1, 2, 3, 4].map(i => (
                     <div key={i} className={cn("h-1 rounded-full transition-all duration-300",
                         step >= i ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30")}
                     />
