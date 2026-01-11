@@ -62,9 +62,10 @@ export class FreepikImageProvider implements ImageProvider {
             // Reparse since we consumed the stream
             let data = JSON.parse(errorText);
 
-            // Handle Async Response (IN_PROGRESS)
-            if (data.data && data.data.status === 'IN_PROGRESS' && data.data.task_id) {
-                console.log(`[Freepik] Async Task Started: ${data.data.task_id}. Polling...`);
+            // Handle Async Response (IN_PROGRESS / CREATED)
+            // If we have a task_id and it's not finished, we poll.
+            if (data.data && data.data.task_id && data.data.status !== 'COMPLETED') {
+                console.log(`[Freepik] Async Task Found: ${data.data.task_id} (Status: ${data.data.status}). Polling...`);
                 data = await this.waitForCompletion(data.data.task_id);
             }
 
