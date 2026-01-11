@@ -51,6 +51,7 @@ export function UnifiedCampaignForm() {
     })
 
     const [generatedPosts, setGeneratedPosts] = React.useState<any[]>([])
+    const [campaignId, setCampaignId] = React.useState<string | null>(null)
 
     // Watch values for progressive disclosure
     const brandName = form.watch("brandName")
@@ -67,6 +68,42 @@ export function UnifiedCampaignForm() {
     }
 
     const nextStep = () => setStep(s => s + 1)
+
+    // Poll for updates when in Results view
+    React.useEffect(() => {
+        if (step !== 5 || !campaignId) return;
+
+        let isCancelled = false;
+
+        const fetchPosts = async () => {
+            try {
+                const res = await fetch(`/api/campaigns/${campaignId}/posts`);
+                const data = await res.json();
+                if (!isCancelled && data.posts) {
+                    setGeneratedPosts(data.posts);
+
+                    // Stop polling if all done
+                    const allDone = data.posts.every((p: any) => p.status === 'DRAFT' || p.status === 'FAILED');
+                    if (allDone) {
+                        return true; // Signal done
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error", err);
+            }
+            return false;
+        };
+
+        const intervalId = setInterval(async () => {
+            const done = await fetchPosts();
+            if (done) clearInterval(intervalId);
+        }, 3000);
+
+        return () => {
+            isCancelled = true;
+            clearInterval(intervalId);
+        }
+    }, [step, campaignId]);
 
     const onSubmit = async (data: WizardFormValues) => {
         // Final Client Validation before API Call
@@ -90,6 +127,7 @@ export function UnifiedCampaignForm() {
             } else {
                 if (json.firstRun && json.firstRun.posts) {
                     setGeneratedPosts(json.firstRun.posts);
+                    setCampaignId(json.id);
                     setStep(5); // Advance to Results View
                 } else {
                     alert("Campaign Created, but no posts returned.");
@@ -194,12 +232,10 @@ export function UnifiedCampaignForm() {
                                 ))}
                             </div>
                         </div>
-                        {/* Added "Skip" or manual Next if they want to keep default style? But for now forcing selection is cleaner UI-wise or we keep the Next button. 
-                We added auto-advance above, but let's keep the Next button logic outside safe. */}
                     </motion.div>
                 )
 
-            case 4: // Reference Image + Generate (No Budget)
+            case 4: // Reference Image + Generate
                 return (
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
@@ -246,7 +282,7 @@ export function UnifiedCampaignForm() {
                                 disabled={isGenerating}
                             >
                                 {isGenerating ? <Loader2 className="animate-spin mr-2" /> : <Check className="mr-2" />}
-                                {isGenerating ? "Generating Magic..." : "Generate Campaign"}
+                                {isGenerating ? "Processing..." : "Generate Campaign"}
                             </Button>
                         </div>
                     </motion.div>
@@ -265,32 +301,49 @@ export function UnifiedCampaignForm() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {generatedPosts.map((post, idx) => (
-                                <motion.div
-                                    key={idx}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: idx * 0.1 }}
-                                    className="bg-card rounded-xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow"
-                                >
-                                    <div className="aspect-square bg-muted relative overflow-hidden group">
-                                        <img
-                                            src={post.content.imageUrl}
-                                            alt="Generated Content"
-                                            className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
-                                        />
-                                    </div>
-                                    <div className="p-4">
-                                        <p className="text-sm text-muted-foreground line-clamp-3 italic">
-                                            "{post.content.caption}"
-                                        </p>
-                                        <div className="mt-4 flex gap-2">
-                                            <Button size="sm" variant="outline" className="w-full text-xs">Edit</Button>
-                                            <Button size="sm" className="w-full text-xs">Schedule</Button>
+                            {generatedPosts.map((post, idx) => {
+                                const isGenerating = post.status === 'GENERATING' || post.status === 'PROVISIONING';
+                                return (
+                                    <motion.div
+                                        key={idx}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: idx * 0.1 }}
+                                        className="bg-card rounded-xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow"
+                                    >
+                                        <div className="aspect-square bg-muted relative overflow-hidden group flex items-center justify-center">
+                                            {isGenerating ? (
+                                                <div className="flex flex-col items-center text-muted-foreground animate-pulse">
+                                                    <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                                                    <span className="text-xs uppercase tracking-widest">Designing...</span>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={post.content?.imageUrl}
+                                                    alt="Generated Content"
+                                                    className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
+                                                />
+                                            )}
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                        <div className="p-4">
+                                            {isGenerating ? (
+                                                <div className="space-y-2 animate-pulse">
+                                                    <div className="h-4 bg-muted rounded w-3/4"></div>
+                                                    <div className="h-4 bg-muted rounded w-1/2"></div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground line-clamp-3 italic">
+                                                    "{post.content?.caption}"
+                                                </p>
+                                            )}
+                                            <div className="mt-4 flex gap-2">
+                                                <Button size="sm" variant="outline" className="w-full text-xs" disabled={isGenerating}>Edit</Button>
+                                                <Button size="sm" className="w-full text-xs" disabled={isGenerating}>Schedule</Button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )
+                            })}
                         </div>
                         <div className="mt-12 text-center">
                             <Button variant="ghost" onClick={() => window.location.reload()}>Start Over</Button>

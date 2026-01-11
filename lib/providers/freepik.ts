@@ -108,7 +108,7 @@ export class FreepikImageProvider implements ImageProvider {
 
     private async waitForCompletion(taskId: string): Promise<any> {
         const pollEndpoint = `${this.baseUrl}/mystic/${taskId}`;
-        const maxRetries = 20; // 40 seconds max (2s interval)
+        const maxRetries = 60; // 120 seconds max (2s interval)
 
         for (let i = 0; i < maxRetries; i++) {
             await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s
